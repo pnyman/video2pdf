@@ -98,8 +98,10 @@ int main(void) {
         .date = "Today"
     };
 
+    char *typeface = "Times-Roman";
+    int font_size = 12;
     struct pdf_doc *pdf = pdf_create(PDF_A4_WIDTH, PDF_A4_HEIGHT, &info);
-    pdf_set_font(pdf, "Times-Roman");
+    pdf_set_font(pdf, typeface);
 
     int timestamps[] = {1, 34, 51, 67, 82, 97,
                         114, 129, 144, 154, 170, 189, 199,
@@ -108,6 +110,8 @@ int main(void) {
                         400, 425};
     size_t number_of_ts = sizeof(timestamps) / sizeof(int);
     int top_y = start_pos;
+    int page = 0;
+    char pagenr[20];
 
     for (size_t i = 0; i < number_of_ts; i++) {
         take_screenshot(timestamps[i]);
@@ -130,6 +134,7 @@ int main(void) {
         if (i == 0 || top_y - scaled_height < 0) {
             pdf_append_page(pdf);
             top_y = start_pos;
+            page++;
         }
         else {
             top_y -= scaled_height;
@@ -137,6 +142,12 @@ int main(void) {
 
         pdf_add_image_file(pdf, NULL, 10, top_y, width, -1, imgfile);
         remove(imgfile);
+
+        sprintf(pagenr, "%d", page);
+        float text_width;
+        pdf_get_font_text_width(pdf, typeface, pagenr, font_size, &text_width);
+        int x = (PDF_A4_WIDTH - text_width) / 2;
+        pdf_add_text(pdf, NULL, pagenr, font_size, x, 20, PDF_BLACK);
     }
 
     pdf_save(pdf, "output.pdf");
