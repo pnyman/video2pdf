@@ -5,9 +5,11 @@
 
 char *videofile = "videoplayback.mp4";
 char *imgfile = "screenshot.jpg";
-int width = 575;
 typedef unsigned char BYTE_ARRAY[];
-#define start_pos 500;
+
+#define margin 55
+int display_width = (PDF_A4_WIDTH - 2 * margin);
+int start_y_pos = 555; // magic number
 
 bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height);
 unsigned char* read_file(const char* filename, size_t* filesize);
@@ -108,10 +110,11 @@ int main(void) {
                         209, 220, 230, 235, 255, 265, 275, 285,
                         300, 320, 330, 350, 360, 380,
                         400, 425};
+
     size_t number_of_ts = sizeof(timestamps) / sizeof(int);
-    int top_y = start_pos;
-    int page = 0;
-    char pagenr[20];
+    int this_y_pos = start_y_pos;
+    int pagenr = 0;
+    char page_str[20];
 
     for (size_t i = 0; i < number_of_ts; i++) {
         take_screenshot(timestamps[i]);
@@ -128,26 +131,26 @@ int main(void) {
         get_jpeg_dim(jpeg_data, filesize, &img_width, &img_height);
         free(jpeg_data);
 
-        float scale = (float)width / img_width;
+        float scale = (float)display_width / img_width;
         int scaled_height = img_height * scale;
 
-        if (i == 0 || top_y - scaled_height < 0) {
+        if (i == 0 || this_y_pos - scaled_height < 0) {
             pdf_append_page(pdf);
-            top_y = start_pos;
-            page++;
+            this_y_pos = start_y_pos;
+            pagenr++;
         }
         else {
-            top_y -= scaled_height;
+            this_y_pos -= scaled_height;
         }
 
-        pdf_add_image_file(pdf, NULL, 10, top_y, width, -1, imgfile);
+        pdf_add_image_file(pdf, NULL, margin, this_y_pos, display_width, -1, imgfile);
         remove(imgfile);
 
-        sprintf(pagenr, "%d", page);
+        sprintf(page_str, "%d", pagenr);
         float text_width;
-        pdf_get_font_text_width(pdf, typeface, pagenr, font_size, &text_width);
+        pdf_get_font_text_width(pdf, typeface, page_str, font_size, &text_width);
         int x = (PDF_A4_WIDTH - text_width) / 2;
-        pdf_add_text(pdf, NULL, pagenr, font_size, x, 20, PDF_BLACK);
+        pdf_add_text(pdf, NULL, page_str, font_size, x, 15, PDF_BLACK);
     }
 
     pdf_save(pdf, "output.pdf");
