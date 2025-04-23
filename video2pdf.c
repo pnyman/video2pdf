@@ -3,8 +3,16 @@
 #include <stdbool.h>
 #include "pdfgen.h"
 
-char *videofile = "videoplayback.mp4";
+#define MAX_TIMESTAMPS 100 // adjust if needed
+
+char *videofile;
+int timestamps[MAX_TIMESTAMPS];
+int timestamp_count = 0;
+
 char *imgfile = "screenshot.jpg";
+char *typeface = "Times-Roman";
+int font_size = 12;
+
 typedef unsigned char BYTE_ARRAY[];
 
 #define margin 55
@@ -89,8 +97,36 @@ void take_screenshot(int seconds) {
     }
 }
 
-/* * main */
-int main(void) {
+// * parse_timestamp
+
+int parse_timestamp(const char *str) {
+    int minutes, seconds;
+    if (sscanf(str, "%d:%d", &minutes, &seconds) != 2) {
+        fprintf(stderr, "Ogiltigt tidsformat: %s\n", str);
+        exit(EXIT_FAILURE);
+    }
+    return minutes * 60 + seconds;
+}
+
+// * main
+
+int main(int argc, char *argv[]) {
+
+    if (argc < 2) {
+        fprintf(stderr, "Användning: %s <videofil> [m:ss]...\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    videofile = argv[1];
+
+    for (int i = 2; i < argc; ++i) {
+        if (timestamp_count >= MAX_TIMESTAMPS) {
+            fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
+            return EXIT_FAILURE;
+        }
+        timestamps[timestamp_count++] = parse_timestamp(argv[i]);
+    }
+
     struct pdf_info info = {
         .creator = "My software",
         .producer = "My software",
@@ -100,23 +136,14 @@ int main(void) {
         .date = "Today"
     };
 
-    char *typeface = "Times-Roman";
-    int font_size = 12;
     struct pdf_doc *pdf = pdf_create(PDF_A4_WIDTH, PDF_A4_HEIGHT, &info);
     pdf_set_font(pdf, typeface);
 
-    int timestamps[] = {1, 34, 51, 67, 82, 97,
-                        114, 129, 144, 154, 170, 189, 199,
-                        209, 220, 230, 235, 255, 265, 275, 285,
-                        300, 320, 330, 350, 360, 380,
-                        400, 425};
-
-    size_t number_of_ts = sizeof(timestamps) / sizeof(int);
     int this_y_pos = start_y_pos;
     int pagenr = 0;
     char page_str[20];
 
-    for (size_t i = 0; i < number_of_ts; i++) {
+    for (int i = 0; i < timestamp_count; i++) {
         take_screenshot(timestamps[i]);
 
         size_t filesize = 0;
