@@ -43,10 +43,8 @@ bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height) {
 		const int len = (data[off]<<8) | data[off+1];  off += 2;
 
 		if (mrkr == 0xc0) {
-			/* int bpc = data[off];     // Precision (bits per channel) */
 			*height = (data[off+1]<<8) | data[off+2];
 			*width = (data[off+3]<<8) | data[off+4];
-			/* int cps = data[off+5];    // Number of color components */
 			return true;
 		}
 		off += len - 2;
@@ -54,7 +52,8 @@ bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height) {
 	return false;
 }
 
-/* * read_file */
+// * read_file
+
 unsigned char* read_file(const char* filename, size_t* filesize) {
 	FILE* f = fopen(filename, "rb");
 	if (!f) return NULL;
@@ -79,7 +78,8 @@ unsigned char* read_file(const char* filename, size_t* filesize) {
 	return buffer;
 }
 
-/* * take_screenshot */
+// * take_screenshot
+
 void take_screenshot(int seconds) {
     char command[512];
     snprintf(command, sizeof(command),
