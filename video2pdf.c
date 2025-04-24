@@ -137,49 +137,9 @@ void set_output_path(const char *videopath, const char *outfilename) {
     strncat(outputfile, outfilename, MAX_PATH - dirlen - 1);
 }
 
+// * create_pdf
 
-
-// * main
-
-int main(int argc, char *argv[]) {
-    char outfilename[MAX_PATH] = "output.pdf";
-
-    if (argc < 3) {
-      fprintf(stderr, "Användning: %s [-o output.pdf] <videofil> m:ss [m:ss]...\n", argv[0]);
-      return EXIT_FAILURE;
-    }
-
-    int argi = 1;
-    if (strcmp(argv[argi], "-o") == 0) {
-        if (argi + 2 >= argc) {
-            fprintf(stderr, "Fel: flaggan -o måste följas av ett filnamn och en videofil.\n");
-            return EXIT_FAILURE;
-        }
-        strncpy(outfilename, argv[argi + 1], MAX_PATH - 1);
-        outfilename[MAX_PATH - 1] = '\0';
-        argi += 2;
-    }
-
-    if (argi >= argc) {
-        fprintf(stderr, "Fel: ingen videofil angiven.\n");
-        return EXIT_FAILURE;
-    }
-
-    videofile = argv[argi++];
-    set_output_path(videofile, outfilename);
-
-    printf("videofile: %s\n", videofile);
-    printf("outputfile: %s\n", outfilename);
-    printf("outputpath: %s\n", outputfile);
-
-    while (argi < argc) {
-        if (timestamp_count >= MAX_TIMESTAMPS) {
-            fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
-            return EXIT_FAILURE;
-        }
-        timestamps[timestamp_count++] = parse_timestamp(argv[argi++]);
-    }
-
+int create_pdf() {
     struct pdf_info info = {
         .creator = "My software",
         .producer = "My software",
@@ -235,5 +195,47 @@ int main(int argc, char *argv[]) {
 
     pdf_save(pdf, outputfile);
     pdf_destroy(pdf);
+    return 0;
+}
+
+// * main
+
+int main(int argc, char *argv[]) {
+    char outfilename[MAX_PATH] = "output.pdf";
+
+    if (argc < 3) {
+      fprintf(stderr, "Användning: %s [-o output.pdf] <videofil> m:ss [m:ss]...\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    int argi = 1;
+    if (strcmp(argv[argi], "-o") == 0) {
+        if (argi + 2 >= argc) {
+            fprintf(stderr, "Fel: flaggan -o måste följas av ett filnamn och en videofil.\n");
+            return EXIT_FAILURE;
+        }
+        strncpy(outfilename, argv[argi + 1], MAX_PATH - 1);
+        outfilename[MAX_PATH - 1] = '\0';
+        argi += 2;
+    }
+
+    if (argi >= argc) {
+        fprintf(stderr, "Fel: ingen videofil angiven.\n");
+        return EXIT_FAILURE;
+    }
+
+    while (argi < argc) {
+        if (timestamp_count >= MAX_TIMESTAMPS) {
+            fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
+            return EXIT_FAILURE;
+        }
+        timestamps[timestamp_count++] = parse_timestamp(argv[argi++]);
+    }
+
+    videofile = argv[argi++];
+    set_output_path(videofile, outfilename);
+
+    create_pdf();
+
     return 0;
 }
