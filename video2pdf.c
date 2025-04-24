@@ -1,13 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 #include "pdfgen.h"
 
 #define MAX_TIMESTAMPS 100 // adjust if needed
+#define MAX_PATH 1024
 
 char *videofile;
 int timestamps[MAX_TIMESTAMPS];
 int timestamp_count = 0;
+char outputfile[MAX_PATH];
 
 char *imgfile = "screenshot.jpg";
 char *typeface = "Times-Roman";
@@ -23,7 +26,8 @@ bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height);
 unsigned char* read_file(const char* filename, size_t* filesize);
 void take_screenshot(int seconds);
 
-/* * get_jpeg_dim */
+// * get_jpeg_dim
+
 bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height) {
 	*width = *height = -1;
 	size_t off = 0;
@@ -108,23 +112,72 @@ int parse_timestamp(const char *str) {
     return minutes * 60 + seconds;
 }
 
+// * set_output_path
+
+void set_output_path(const char *videopath, const char *outfilename) {
+    const char *last_sep = strrchr(videopath, '/');
+    if (!last_sep) {
+        last_sep = strrchr(videopath, '\\');  // support Windows paths too
+    }
+
+    if (!last_sep) {
+        fprintf(stderr, "Kunde inte hitta sökvägsseparator i videofil: %s\n", videopath);
+        exit(EXIT_FAILURE);
+    }
+
+    size_t dirlen = last_sep - videopath + 1;
+    if (dirlen >= MAX_PATH) {
+        fprintf(stderr, "Sökvägen är för lång\n");
+        exit(EXIT_FAILURE);
+    }
+
+    strncpy(outputfile, videopath, dirlen);
+    outputfile[dirlen] = '\0';
+
+    strncat(outputfile, outfilename, MAX_PATH - dirlen - 1);
+}
+
+
+
 // * main
 
 int main(int argc, char *argv[]) {
+    char outfilename[MAX_PATH] = "output.pdf";
 
-    if (argc < 2) {
-        fprintf(stderr, "Användning: %s <videofil> [m:ss]...\n", argv[0]);
+    if (argc < 3) {
+      fprintf(stderr, "Användning: %s [-o output.pdf] <videofil> m:ss [m:ss]...\n", argv[0]);
+      return EXIT_FAILURE;
+    }
+
+    int argi = 1;
+    if (strcmp(argv[argi], "-o") == 0) {
+        if (argi + 2 >= argc) {
+            fprintf(stderr, "Fel: flaggan -o måste följas av ett filnamn och en videofil.\n");
+            return EXIT_FAILURE;
+        }
+        strncpy(outfilename, argv[argi + 1], MAX_PATH - 1);
+        outfilename[MAX_PATH - 1] = '\0';
+        argi += 2;
+    }
+
+    if (argi >= argc) {
+        fprintf(stderr, "Fel: ingen videofil angiven.\n");
         return EXIT_FAILURE;
     }
 
-    videofile = argv[1];
+    videofile = argv[argi++];
+    set_output_path(videofile, outfilename);
 
-    for (int i = 2; i < argc; ++i) {
+    printf("videofile: %s\n", videofile);
+    printf("outputfile: %s\n", outfilename);
+    printf("outputpath: %s\n", outputfile);
+
+    while (argi < argc) {
         if (timestamp_count >= MAX_TIMESTAMPS) {
             fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
             return EXIT_FAILURE;
         }
-        timestamps[timestamp_count++] = parse_timestamp(argv[i]);
+        timestamps[timestamp_count++] = parse_timestamp(argv[argi++]);
     }
 
     struct pdf_info info = {
@@ -180,7 +233,7 @@ int main(int argc, char *argv[]) {
         pdf_add_text(pdf, NULL, page_str, font_size, x, 15, PDF_BLACK);
     }
 
-    pdf_save(pdf, "output.pdf");
+    pdf_save(pdf, outputfile);
     pdf_destroy(pdf);
     return 0;
 }
