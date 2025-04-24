@@ -224,6 +224,9 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    videofile = argv[argi++];
+    set_output_path(videofile, outfilename);
+
     while (argi < argc) {
         if (timestamp_count >= MAX_TIMESTAMPS) {
             fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
@@ -232,10 +235,6 @@ int main(int argc, char *argv[]) {
         timestamps[timestamp_count++] = parse_timestamp(argv[argi++]);
     }
 
-    videofile = argv[argi++];
-    set_output_path(videofile, outfilename);
-
     create_pdf();
-
     return 0;
 }
