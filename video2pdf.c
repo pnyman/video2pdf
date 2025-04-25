@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include "pdfgen.h"
+#include <unistd.h>
+#include "lib/pdfgen.h"
 
 #define MAX_TIMESTAMPS 100 // adjust if needed
 #define MAX_PATH 1024
