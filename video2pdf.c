@@ -26,6 +26,9 @@ int start_y_pos = 555; // magic number
 bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height);
 unsigned char* read_file(const char* filename, size_t* filesize);
 void take_screenshot(int seconds);
+int parse_timestamp(const char *str);
+void set_output_path(const char *videopath, const char *outfilename);
+int create_pdf();
 
 // * get_jpeg_dim
 
