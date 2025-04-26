@@ -30,6 +30,9 @@ void take_screenshot(int seconds);
 int parse_timestamp(const char *str);
 void set_output_path(const char *videopath, const char *outfilename);
 int create_pdf();
+char *format_timestamp(int seconds);
+void prompt_help(void);
+void prompt_for_input(void);
 void help(void);
 
 #endif // VIDEO2PDF_H
