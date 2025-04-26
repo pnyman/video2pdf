@@ -3,7 +3,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 #include "lib/pdfgen.h"
+#include "video2pdf.h"
 
 #define MAX_TIMESTAMPS 100 // adjust if needed
 #define MAX_PATH 1024
@@ -19,16 +21,8 @@ int font_size = 12;
 
 typedef unsigned char BYTE_ARRAY[];
 
-#define margin 55
-int display_width = (PDF_A4_WIDTH - 2 * margin);
+int margins = 55;
 int start_y_pos = 555; // magic number
-
-bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height);
-unsigned char* read_file(const char* filename, size_t* filesize);
-void take_screenshot(int seconds);
-int parse_timestamp(const char *str);
-void set_output_path(const char *videopath, const char *outfilename);
-int create_pdf();
 
 // * get_jpeg_dim
 
@@ -153,6 +147,7 @@ int create_pdf() {
         .date = "Today"
     };
 
+    int display_width = (PDF_A4_WIDTH - 2 * margins);
     struct pdf_doc *pdf = pdf_create(PDF_A4_WIDTH, PDF_A4_HEIGHT, &info);
     pdf_set_font(pdf, typeface);
 
@@ -187,7 +182,7 @@ int create_pdf() {
             this_y_pos -= scaled_height;
         }
 
-        pdf_add_image_file(pdf, NULL, margin, this_y_pos, display_width, -1, imgfile);
+        pdf_add_image_file(pdf, NULL, margins, this_y_pos, display_width, -1, imgfile);
         remove(imgfile);
 
         sprintf(page_str, "%d", pagenr);
@@ -202,42 +197,80 @@ int create_pdf() {
     return 0;
 }
 
+// * help()
+
+void help(void) {
+    printf("Usage: vip -i <inputfile> -o <outputfile> -m <margins> -t <timestamps>\n");
+    printf("-i, --input:      mp4 file\n");
+    printf("-o, --output:     name of resulting pdf file\n");
+    printf("-m, --margins:    left/right margins (optional)\n");
+    printf("-t, --timestamps: list of timestamps [m]m:ss separated by space\n");
+    printf("-h, --help:       show this help\n");
+}
+
 // * main
 
 int main(int argc, char *argv[]) {
-    char outfilename[MAX_PATH] = "output.pdf";
+    char outfilename[MAX_PATH];
     int opt;
+    int option_index = 0;
+    bool outputparam = false;
+    bool tsparam = false;
 
-    while ((opt = getopt(argc, argv, "o:")) != -1) {
+    static struct option long_options[] = {
+        {"input", required_argument, 0, 'i'},
+        {"output", required_argument, 0, 'o'},
+        {"margins", optional_argument, 0, 'm'},
+        {"timestamps", required_argument, 0, 't'},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    while ((opt = getopt_long(argc, argv, "i:o:m:t:h", long_options, &option_index)) != -1) {
         switch (opt) {
-            case 'o':
-                strncpy(outfilename, optarg, MAX_PATH - 1);
-                outfilename[MAX_PATH - 1] = '\0';
-                break;
-            default:
-                fprintf(stderr, "Användning: %s [-o output.pdf] <videofil> m:ss [m:ss]...\n", argv[0]);
+        case 'i':
+            videofile = optarg;
+            break;
+        case 'o':
+            strncpy(outfilename, optarg, MAX_PATH - 1);
+            outfilename[MAX_PATH - 1] = '\0';
+            outputparam = true;
+            break;
+        case 'm':
+            margins = atoi(optarg);
+            break;
+        case 't':
+            if (timestamp_count >= MAX_TIMESTAMPS) {
+                fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
                 return EXIT_FAILURE;
+            }
+            // Lägg till första timestampen från optarg
+            timestamps[timestamp_count++] = parse_timestamp(optarg);
+            while (optind < argc && argv[optind][0] != '-') {
+                if (timestamp_count >= MAX_TIMESTAMPS) {
+                    fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
+                    return EXIT_FAILURE;
+                }
+                timestamps[timestamp_count++] = parse_timestamp(argv[optind]);
+                optind++;
+            }
+            tsparam = true;
+            break;
+        case 'h':
+        default:
+            help();
+            return EXIT_FAILURE;
         }
     }
 
-    if (optind >= argc) {
-        fprintf(stderr, "Fel: ingen videofil angiven.\n");
+    if (!videofile || !outputparam || !tsparam) {
+        fprintf(stderr, "Fel: obligatoriska parametrar saknas.\n\n");
+        help();
         return EXIT_FAILURE;
     }
 
-    videofile = argv[optind++];
     set_output_path(videofile, outfilename);
-
-    while (optind < argc) {
-        if (timestamp_count >= MAX_TIMESTAMPS) {
-            fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
-            return EXIT_FAILURE;
-        }
-
-        char *ts = argv[optind++];
-        timestamps[timestamp_count++] = parse_timestamp(ts);
-    }
-
     create_pdf();
-    return 0;
+
+    return EXIT_SUCCESS;
 }
