@@ -14,7 +14,7 @@ extern char *videofile;
 extern int timestamps[MAX_TIMESTAMPS];
 extern int timestamp_count;
 extern char outputfile[MAX_PATH];
-extern char *imgfile;
+extern char imgfile[MAX_PATH];
 extern char *typeface;
 extern int font_size;
 extern int display_width;

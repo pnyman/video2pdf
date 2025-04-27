@@ -17,25 +17,26 @@ int timestamps[MAX_TIMESTAMPS];
 int timestamp_count = 0;
 char outfilename[MAX_PATH];
 char outputfile[MAX_PATH];
+char imgfile[MAX_PATH];
 
-char *imgfile = "screenshot.jpg";
 char *typeface = "Times-Roman";
 int font_size = 12;
 
 typedef unsigned char BYTE_ARRAY[];
 
-int margins = 55;
+int margins = 0;
+int top_margin = 0;
 int start_y_pos = 555; // magic number
 
 static struct option long_options[] = {
     {"input", required_argument, 0, 'i'},
     {"output", required_argument, 0, 'o'},
-    {"margins", optional_argument, 0, 'm'},
     {"timestamps", required_argument, 0, 't'},
+    {"margins", optional_argument, 0, 'm'},
+    {"top margin", optional_argument, 0, 'u'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
 };
-
 
 // * get_jpeg_dim
 
@@ -161,7 +162,7 @@ int create_pdf() {
     struct pdf_doc *pdf = pdf_create(PDF_A4_WIDTH, PDF_A4_HEIGHT, &info);
     pdf_set_font(pdf, typeface);
 
-    int this_y_pos = start_y_pos;
+    int this_y_pos = start_y_pos - top_margin;
     int pagenr = 0;
     char page_str[20];
 
@@ -185,7 +186,7 @@ int create_pdf() {
 
         if (i == 0 || this_y_pos - scaled_height < 0) {
             pdf_append_page(pdf);
-            this_y_pos = start_y_pos;
+            this_y_pos = start_y_pos - top_margin;
             pagenr++;
         }
         else {
@@ -228,22 +229,24 @@ char *format_timestamp(int seconds) {
 // * prompt_help()
 
 void prompt_help(void) {
-    printf("Tillgängliga kommandon:\n");
-    printf("  i <inputfil>\n");
-    printf("  o <outputfil>\n");
-    printf("  m <marginal>\n");
-    printf("  t <timestamp>\n");
-    printf("  s (status)\n");
-    printf("  r (kör)\n");
-    printf("  h (hjälp)\n");
-    printf("  q (avsluta)\n");
+    printf("Available commands:\n");
+    printf("  i <input file>\n");
+    printf("  o <output file>\n");
+    printf("  t <time stamps>\n");
+    printf("  m <left/right margins> (optional)\n");
+    printf("  u <top margin> (optional)\n");
+    printf("  s (show settings)\n");
+    printf("  c (clear settings)\n");
+    printf("  r (run)\n");
+    printf("  h (help)\n");
+    printf("  q (quit)\n");
 }
 
 // * prompt_for_input
 
 void prompt_for_input(void) {
     char input[1024];
-    printf("Ingen parameter angiven. Ange kommandon manuellt.\n");
+    printf("Welcome to VIP!\n");
     prompt_help();
 
     bool ready = false;
@@ -266,7 +269,7 @@ void prompt_for_input(void) {
 
         // Plocka ut första bokstaven (kommando) och resten som argument
         if (sscanf(input, "%c %[^\n]", &command, argument) < 1) {
-            printf("Felaktig inmatning.\n");
+            printf("Incorrect argument.\n");
             continue;
         }
 
@@ -275,30 +278,38 @@ void prompt_for_input(void) {
         case 'i':
             strncpy(videofile, argument, MAX_PATH - 1);
             videofile[MAX_PATH - 1] = '\0';
-            printf("Inputfil satt till: %s\n", videofile);
+            printf("Input file set to: %s\n", videofile);
             break;
 
         case 'o':
             strncpy(outfilename, argument, MAX_PATH - 1);
             outfilename[MAX_PATH - 1] = '\0';
-            printf("Outputfil satt till: %s\n", outfilename);
+            printf("Output file set to: %s\n", outfilename);
             break;
 
         case 'm':
             margins = atoi(argument);
-            printf("Marginaler satta till: %d\n", margins);
+            printf("Margins set to: %d\n", margins);
+            break;
+
+        case 'u':
+            top_margin = atoi(argument);
+            printf("Top margin set to: %d\n", top_margin);
             break;
 
         case 't': {
             if (strlen(argument) == 0) {
-                printf("Ingen timestamp angiven.\n");
+                printf("No time stamps given.\n");
                 break;
             }
+
+            // clear old timestamps
+            timestamp_count = 0;
 
             char *token = strtok(argument, " ");
             while (token != NULL) {
                 if (timestamp_count >= MAX_TIMESTAMPS) {
-                    fprintf(stderr, "För många timestamps (max %d).\n", MAX_TIMESTAMPS);
+                    fprintf(stderr, "Too many time stamps (max %d).\n", MAX_TIMESTAMPS);
                     break;
                 }
                 timestamps[timestamp_count++] = parse_timestamp(token);
@@ -309,22 +320,23 @@ void prompt_for_input(void) {
 
         case 'r':
             if (!videofile || strlen(videofile) == 0 || strlen(outfilename) == 0 || timestamp_count == 0) {
-                printf("Alla obligatoriska parametrar är inte satta.\n");
+                printf("Not all mandatory parameters are set.\n");
             }
             else {
-                printf("\nSkapar PDF...\n");
+                printf("Creating PDF...\n");
                 set_output_path(videofile, outfilename);
                 create_pdf();
-                printf("PDF skapad. Du kan nu ändra parametrar eller köra igen.\n");
+                printf("PDF created. You can change parameters and run again.\n");
             }
             break;
 
         case 's':
-            printf("\nAktuella inställningar:\n");
-            printf("  Inputfil: %s\n", videofile[0] ? videofile : "Ej satt");
-            printf("  Outputfil: %s\n", outfilename[0] != '\0' ? outfilename : "Ej satt");
-            printf("  Marginaler: %d\n", margins);
-            printf("  Timestamps: ");
+            printf("Settings:\n");
+            printf("  Input file: %s\n", videofile[0] ? videofile : "Not set.");
+            printf("  Output file: %s\n", outfilename[0] != '\0' ? outfilename : "Not set.");
+            printf("  Margins: %d\n", margins);
+            printf("  Top margin: %d\n", top_margin);
+            printf("  Time stamps: ");
             if (timestamp_count > 0) {
                 for (int i = 0; i < timestamp_count; i++) {
                     char *ts = format_timestamp(timestamps[i]);
@@ -332,9 +344,21 @@ void prompt_for_input(void) {
                     free(ts);
                 }
                 printf("\n");
-            } else {
-                printf("Inga timestamps satta.\n");
             }
+            else {
+                printf("No time stamps set.\n");
+            }
+            break;
+
+        case 'c':
+            printf("Clearing all settings.\n");
+            videofile[0] = '\0';
+            outfilename[0] = '\0';
+            margins = 0;
+            top_margin = 0;
+            timestamp_count = 0;
+            // (valfritt) nollställ timestamps-arrayen
+            memset(timestamps, 0, sizeof(timestamps));
             break;
 
         case 'h':
@@ -342,11 +366,11 @@ void prompt_for_input(void) {
             break;
 
         case 'q':
-            printf("Avslutar programmet.\n");
-            return; // <-- Avsluta funktionen, och därmed programmet om du vill
+            printf("Quitting.\n");
+            return;
 
         default:
-            printf("Ange i, o, m, t, r, s, h eller q.\n");
+            printf("Type i, o, m, t, r, s, c, h or q.\n");
             break;
         }
     }
@@ -362,6 +386,8 @@ void help(void) {
     for (int i = 0; long_options[i].name != NULL; i++) {
         if (long_options[i].has_arg == required_argument)
             printf("  -%c, --%s=<arg>   Required argument\n", long_options[i].val, long_options[i].name);
+        else if (long_options[i].has_arg == optional_argument)
+            printf("  -%c, --%s=<arg>   Optional argument\n", long_options[i].val, long_options[i].name);
         else
             printf("  -%c, --%s        No argument\n", long_options[i].val, long_options[i].name);
     }
@@ -416,6 +442,10 @@ int main(int argc, char *argv[]) {
             margins = atoi(optarg);
             break;
 
+        case 'u':
+            top_margin = atoi(optarg);
+            break;
+
         case 't':
             if (timestamp_count >= MAX_TIMESTAMPS) {
                 fprintf(stderr, "För många tidsstämplar (max %d)\n", MAX_TIMESTAMPS);
@@ -431,7 +461,6 @@ int main(int argc, char *argv[]) {
                 timestamps[timestamp_count++] = parse_timestamp(argv[optind]);
                 optind++;
             }
-            /* tsparam = true; */
             break;
 
         case 'h':
@@ -442,7 +471,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Om inga parametrar är angivna, fråga användaren om input
-    if (!videofile || !outputparam || margins == 0 || timestamp_count == 0) {
+    if (!videofile || !outputparam || timestamp_count == 0) {
         prompt_for_input();
     }
 
