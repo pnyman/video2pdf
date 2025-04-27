@@ -379,15 +379,28 @@ int main(int argc, char *argv[]) {
     setlocale(LC_ALL, "");
 #endif
 
+#ifdef _WIN32
+    const char *tempdir = getenv("TEMP");
+    if (!tempdir) {
+        tempdir = "."; // Om TEMP inte är satt, använd aktuell katalog
+    }
+    snprintf(imgfile, sizeof(imgfile), "%s\\vip-screenshot.jpg", tempdir);
+#else
+    const char *tempdir = getenv("TMPDIR");
+    if (!tempdir) {
+        tempdir = "/tmp";
+    }
+    snprintf(imgfile, sizeof(imgfile), "%s/vip-screenshot.jpg", tempdir);
+#endif
+
     int opt;
     int option_index = 0;
     bool outputparam = false;
-    /* bool tsparam = false; */
 
     videofile = malloc(MAX_PATH);
     videofile[0] = '\0';
 
-    while ((opt = getopt_long(argc, argv, "i:o:m:t:h", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "i:o:m:u:t:h", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'i':
             videofile = optarg;
