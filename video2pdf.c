@@ -226,6 +226,30 @@ char *format_timestamp(int seconds) {
     return buffer;
 }
 
+// * open_outputfile()
+
+void open_outputfile(void) {
+    if (outputfile[0] == '\0') {
+        printf("No output file set.\n");
+        return;
+    }
+
+    char command[MAX_PATH + 20];
+
+#ifdef _WIN32
+    snprintf(command, sizeof(command), "start \"\" \"%s\"", outputfile);
+#elif __APPLE__
+    snprintf(command, sizeof(command), "open \"%s\"", outputfile);
+#else // Linux och andra Unix
+    snprintf(command, sizeof(command), "xdg-open \"%s\"", outputfile);
+#endif
+
+    int result = system(command);
+    if (result != 0) {
+        printf("Failed to open file.\n");
+    }
+}
+
 // * prompt_help()
 
 void prompt_help(void) {
@@ -235,11 +259,12 @@ void prompt_help(void) {
     printf("  t <time stamps>\n");
     printf("  m <left/right margins> (optional)\n");
     printf("  u <top margin> (optional)\n");
-    printf("  s (show settings)\n");
-    printf("  c (clear settings)\n");
-    printf("  r (run)\n");
-    printf("  h (help)\n");
-    printf("  q (quit)\n");
+    printf("  s show settings\n");
+    printf("  c clear settings\n");
+    printf("  r run\n");
+    printf("  v view pdf-file\n");
+    printf("  h help\n");
+    printf("  q quit\n");
 }
 
 // * prompt_for_input
@@ -330,6 +355,10 @@ void prompt_for_input(void) {
             }
             break;
 
+        case 'v':
+            open_outputfile();
+            break;
+
         case 's':
             printf("Settings:\n");
             printf("  Input file: %s\n", videofile[0] ? videofile : "Not set.");
@@ -354,6 +383,7 @@ void prompt_for_input(void) {
             printf("Clearing all settings.\n");
             videofile[0] = '\0';
             outfilename[0] = '\0';
+            outputfile[0] = '\0';
             margins = 0;
             top_margin = 0;
             timestamp_count = 0;
@@ -370,7 +400,7 @@ void prompt_for_input(void) {
             return;
 
         default:
-            printf("Type i, o, m, t, r, s, c, h or q.\n");
+            printf("Type i, o, m, u, t, r, s, c, h or q.\n");
             break;
         }
     }
