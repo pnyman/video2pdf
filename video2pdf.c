@@ -323,10 +323,22 @@ void open_outputfile(void) {
     }
 }
 
+// * download_video()
+
+void download_video(const char *url) {
+    char command[512];
+    snprintf(command, sizeof(command),
+             "yt-dlp -f mp4 -o \"%s\" \"%s\"",
+             videofile, url);
+    printf("Downloading video %s, saving as %s...\n", url, videofile);
+    system(command);
+}
+
 // * prompt_help()
 
 void prompt_help(void) {
     printf("Available commands:\n");
+    printf("  d <url>\n");
     printf("  i <input file>\n");
     printf("  o <output file>\n");
     printf("  t <time stamps>\n");
@@ -373,15 +385,28 @@ void prompt_for_input(void) {
 
         switch (command) {
 
+        case 'd':
+            strncpy(url, argument, MAX_PATH_LEN - 1);
+            url[MAX_PATH_LEN - 1] = '\0';
+            printf("Video url set to: %s\n", url);
+            break;
+
         case 'i':
-            strncpy(videofile, argument, MAX_PATH - 1);
-            videofile[MAX_PATH - 1] = '\0';
+            /* strncpy(videofile, argument, MAX_PATH_LEN - 1); */
+            /* videofile[MAX_PATH_LEN - 1] = '\0'; */
+            snprintf(videofile, MAX_PATH_LEN, "%s.mp4", argument);
             printf("Input file set to: %s\n", videofile);
+
+            /* strncpy(outfilename, argument, MAX_PATH_LEN - 1); */
+            /* outfilename[MAX_PATH_LEN - 1] = '\0'; */
+            snprintf(outfilename, MAX_PATH_LEN, "%s.pdf", argument);
+            printf("Output file set to: %s\n", outfilename);
+
             break;
 
         case 'o':
-            strncpy(outfilename, argument, MAX_PATH - 1);
-            outfilename[MAX_PATH - 1] = '\0';
+            strncpy(outfilename, argument, MAX_PATH_LEN - 1);
+            outfilename[MAX_PATH_LEN - 1] = '\0';
             printf("Output file set to: %s\n", outfilename);
             break;
 
