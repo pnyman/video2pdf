@@ -307,7 +307,7 @@ void open_outputfile(void) {
         return;
     }
 
-    char command[MAX_PATH + 20];
+    char command[MAX_PATH_LEN + 20];
 
 #ifdef _WIN32
     snprintf(command, sizeof(command), "start \"\" \"%s\"", outputfile);
@@ -358,6 +358,10 @@ void prompt_for_input(void) {
     char input[1024];
     printf("Welcome to VIP!\n");
     prompt_help();
+
+    char *url = NULL;
+    url = malloc(MAX_PATH_LEN);
+    url[0] = '\0';
 
     bool ready = false;
     while (!ready) {
@@ -442,12 +446,19 @@ void prompt_for_input(void) {
         }
 
         case 'r':
+            if (url && (!videofile || strlen(videofile) == 0)) {
+                printf("Missing filename for download.\n");
+                break;
+            }
             if (!videofile || strlen(videofile) == 0 || strlen(outfilename) == 0 || timestamp_count == 0) {
                 printf("Not all mandatory parameters are set.\n");
             }
             else {
                 printf("Creating PDF...\n");
                 set_output_path(videofile, outfilename);
+                if (url[0]) {
+                    download_video(url);
+                }
                 create_pdf();
                 printf("PDF created. You can change parameters and run again.\n");
             }
@@ -459,6 +470,7 @@ void prompt_for_input(void) {
 
         case 's':
             printf("Settings:\n");
+            printf("  URL: %s\n", url[0] ? url : "Not set.");
             printf("  Input file: %s\n", videofile[0] ? videofile : "Not set.");
             printf("  Output file: %s\n", outfilename[0] != '\0' ? outfilename : "Not set.");
             printf("  Margins: %d\n", margins);
@@ -507,19 +519,24 @@ void prompt_for_input(void) {
 // * help()
 
 void help(void) {
-    printf("Usage: vip -i <inputfile> -o <outputfile> -m <margins> -t <timestamps>\n\n");
+    printf("Options:\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n\n",
+           "-i, --input=<inputfile>",
+           "-o, --output=<outputfile>",
+           "-m, --margins=<left/right margins>",
+           "-u, --top_margin=<top margin>",
+           "-t, --timestamps=<timestamps>",
+           "-h, --help");
 
-    // Dynamiskt genererad hjälptext
-    printf("Options:\n");
-    for (int i = 0; long_options[i].name != NULL; i++) {
-        if (long_options[i].has_arg == required_argument)
-            printf("  -%c, --%s=<arg>   Required argument\n", long_options[i].val, long_options[i].name);
-        else if (long_options[i].has_arg == optional_argument)
-            printf("  -%c, --%s=<arg>   Optional argument\n", long_options[i].val, long_options[i].name);
-        else
-            printf("  -%c, --%s        No argument\n", long_options[i].val, long_options[i].name);
-    }
-    printf("\n");
+    /* printf("Options:\n"); */
+    /* for (int i = 0; long_options[i].name != NULL; i++) { */
+    /*     if (long_options[i].has_arg == required_argument) */
+    /*         printf("  -%c, --%s=<arg>   Required argument\n", long_options[i].val, long_options[i].name); */
+    /*     else if (long_options[i].has_arg == optional_argument) */
+    /*         printf("  -%c, --%s=<arg>   Optional argument\n", long_options[i].val, long_options[i].name); */
+    /*     else */
+    /*         printf("  -%c, --%s        No argument\n", long_options[i].val, long_options[i].name); */
+    /* } */
+    /* printf("\n"); */
 }
 
 // * main
@@ -561,8 +578,8 @@ int main(int argc, char *argv[]) {
             break;
 
         case 'o':
-            strncpy(outfilename, optarg, MAX_PATH - 1);
-            outfilename[MAX_PATH - 1] = '\0';
+            strncpy(outfilename, optarg, MAX_PATH_LEN - 1);
+            outfilename[MAX_PATH_LEN - 1] = '\0';
             outputparam = true;
             break;
 
