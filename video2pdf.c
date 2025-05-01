@@ -3,21 +3,36 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 #include <getopt.h>
 #include <ctype.h>
 #include "lib/pdfgen.h"
-#include "video2pdf.h"
+
+// * Globals
 
 #define MAX_TIMESTAMPS 100 // adjust if needed
-#define MAX_PATH 1024
+
+#ifdef _WIN32
+#  include <direct.h>   // _getcwd
+#  define getcwd _getcwd
+#  define PATH_SEP '\\'
+#else
+#  include <unistd.h>   // getcwd
+#  define PATH_SEP '/'
+#endif
+
+#ifdef _WIN32
+#  define MAX_PATH_LEN 260
+#else
+#  include <limits.h>
+#  define MAX_PATH_LEN PATH_MAX
+#endif
 
 char *videofile = NULL;
 int timestamps[MAX_TIMESTAMPS];
 int timestamp_count = 0;
-char outfilename[MAX_PATH];
-char outputfile[MAX_PATH];
-char imgfile[MAX_PATH];
+char outfilename[MAX_PATH_LEN];
+char outputfile[MAX_PATH_LEN];
+char imgfile[MAX_PATH_LEN];
 
 char *typeface = "Times-Roman";
 int font_size = 12;
@@ -26,17 +41,34 @@ typedef unsigned char BYTE_ARRAY[];
 
 int margins = 0;
 int top_margin = 0;
-int start_y_pos = 555; // magic number
+int start_y_pos = 455; // magic number
 
 static struct option long_options[] = {
     {"input", required_argument, 0, 'i'},
     {"output", required_argument, 0, 'o'},
     {"timestamps", required_argument, 0, 't'},
     {"margins", optional_argument, 0, 'm'},
-    {"top margin", optional_argument, 0, 'u'},
+    {"top_margin", optional_argument, 0, 'u'},
     {"help", no_argument, 0, 'h'},
     {0, 0, 0, 0}
 };
+
+
+
+// * Forward declarations
+
+bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height);
+unsigned char* read_file(const char* filename, size_t* filesize);
+void take_screenshot(int seconds);
+int parse_timestamp(const char *str);
+void set_output_path(const char *videopath, const char *outfilename);
+int create_pdf();
+char *format_timestamp(int seconds);
+void open_outputfile(void);
+void download_video(const char *url);
+void prompt_help(void);
+void prompt_for_input(void);
+void help(void);
 
 // * get_jpeg_dim
 
@@ -125,17 +157,35 @@ int parse_timestamp(const char *str) {
 
 void set_output_path(const char *videopath, const char *outfilename) {
     const char *last_sep = strrchr(videopath, '/');
+#ifdef _WIN32
     if (!last_sep) {
-        last_sep = strrchr(videopath, '\\');  // support Windows paths too
+        last_sep = strrchr(videopath, '\\');  // Windows-separator
     }
+#endif
 
     if (!last_sep) {
-        fprintf(stderr, "Kunde inte hitta sökvägsseparator i videofil: %s\n", videopath);
-        exit(EXIT_FAILURE);
+        // Ingen separator – använd nuvarande arbetskatalog
+        if (!getcwd(outputfile, MAX_PATH_LEN)) {
+            perror("getcwd failed");
+            exit(EXIT_FAILURE);
+        }
+
+        size_t len = strlen(outputfile);
+        if (len + 1 >= MAX_PATH_LEN) {
+            fprintf(stderr, "Sökvägen är för lång\n");
+            exit(EXIT_FAILURE);
+        }
+
+        outputfile[len] = '/';
+        outputfile[len + 1] = '\0';
+
+        strncat(outputfile, outfilename, MAX_PATH_LEN - strlen(outputfile) - 1);
+        return;
     }
 
+    // Hämta katalogdelen av sökvägen
     size_t dirlen = last_sep - videopath + 1;
-    if (dirlen >= MAX_PATH) {
+    if (dirlen >= MAX_PATH_LEN) {
         fprintf(stderr, "Sökvägen är för lång\n");
         exit(EXIT_FAILURE);
     }
@@ -143,8 +193,31 @@ void set_output_path(const char *videopath, const char *outfilename) {
     strncpy(outputfile, videopath, dirlen);
     outputfile[dirlen] = '\0';
 
-    strncat(outputfile, outfilename, MAX_PATH - dirlen - 1);
+    strncat(outputfile, outfilename, MAX_PATH_LEN - dirlen - 1);
 }
+
+/* void set_output_path(const char *videopath, const char *outfilename) { */
+/*     const char *last_sep = strrchr(videopath, '/'); */
+/*     if (!last_sep) { */
+/*         last_sep = strrchr(videopath, '\\');  // support Windows paths too */
+/*     } */
+/*  */
+/*     if (!last_sep) { */
+/*         fprintf(stderr, "Kunde inte hitta sökvägsseparator i videofil: %s\n", videopath); */
+/*         exit(EXIT_FAILURE); */
+/*     } */
+/*  */
+/*     size_t dirlen = last_sep - videopath + 1; */
+/*     if (dirlen >= MAX_PATH_LEN) { */
+/*         fprintf(stderr, "Sökvägen är för lång\n"); */
+/*         exit(EXIT_FAILURE); */
+/*     } */
+/*  */
+/*     strncpy(outputfile, videopath, dirlen); */
+/*     outputfile[dirlen] = '\0'; */
+/*  */
+/*     strncat(outputfile, outfilename, MAX_PATH_LEN - dirlen - 1); */
+/* } */
 
 // * create_pdf
 
