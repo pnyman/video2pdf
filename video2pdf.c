@@ -657,13 +657,28 @@ int main(int argc, char *argv[]) {
     int option_index = 0;
     bool outputparam = false;
 
+    char *url = NULL;
+    url = malloc(MAX_PATH_LEN);
+    url[0] = '\0';
+    bool download = false;
+
     videofile = malloc(MAX_PATH_LEN);
     videofile[0] = '\0';
 
-    while ((opt = getopt_long(argc, argv, "i:o:m:u:t:h", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:i:o:m:u:k:j:t:h", long_options, &option_index)) != -1) {
         switch (opt) {
+
+        case 'd':
+            strncpy(url, optarg, MAX_PATH_LEN - 1);
+            url[MAX_PATH_LEN - 1] = '\0';
+            download = true;
+            break;
+
         case 'i':
-            videofile = optarg;
+            snprintf(videofile, MAX_PATH_LEN, "%s.mp4", optarg);
+            snprintf(outfilename, MAX_PATH_LEN, "%s.pdf", optarg);
+            outputparam = true;
+            /* videofile = optarg; */
             break;
 
         case 'o':
@@ -678,6 +693,14 @@ int main(int argc, char *argv[]) {
 
         case 'u':
             top_margin = atoi(optarg);
+            break;
+
+        case 'k':
+            top_crop = atoi(optarg);
+            break;
+
+        case 'j':
+            bottom_crop = atoi(optarg);
             break;
 
         case 't':
