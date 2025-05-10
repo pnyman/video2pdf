@@ -291,11 +291,12 @@ int create_pdf() {
         .date = "Today"
     };
 
-    int display_width = (PDF_A4_WIDTH - 2 * margins);
     struct pdf_doc *pdf = pdf_create(PDF_A4_WIDTH, PDF_A4_HEIGHT, &info);
     pdf_set_font(pdf, typeface);
 
+    int display_width = PDF_A4_WIDTH - 2 * margins;
     int this_y_pos = start_y_pos - top_margin;
+
     int pagenr = 0;
     char page_str[20];
 
@@ -326,7 +327,7 @@ int create_pdf() {
             this_y_pos -= scaled_height;
         }
 
-        pdf_add_image_file(pdf, NULL, margins, this_y_pos, display_width, -1, imgfile);
+        pdf_add_image_file(pdf, NULL, margins, this_y_pos + margins, display_width, -1, imgfile);
         remove(imgfile);
 
         sprintf(page_str, "%d", pagenr);
