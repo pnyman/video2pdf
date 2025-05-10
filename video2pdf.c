@@ -591,14 +591,28 @@ void prompt_for_input(void) {
     }
 }
 
+// * file_exists()
+
+bool file_exists(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (file) {
+        fclose(file);
+        return true;  // Filen existerar
+    }
+    return false;      // Filen existerar inte
+}
+
 // * help()
 
 void help(void) {
-    printf("Options:\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n\n",
+    printf("Options:\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n\n",
+           "-d, --download=<url>",
            "-i, --input=<inputfile>",
            "-o, --output=<outputfile>",
            "-m, --margins=<left/right margins>",
            "-u, --top_margin=<top margin>",
+           "-j, --bottom_crop=<bottom crop>",
+           "-k, --top_crop=<top crop>",
            "-t, --timestamps=<timestamps>",
            "-h, --help");
 
@@ -697,7 +711,12 @@ int main(int argc, char *argv[]) {
 
     else {
         set_output_path(videofile, outfilename);
+        if (download && !file_exists(videofile)) {
+            download_video(url);
+        }
+        printf("Creating pdf...\n");
         create_pdf();
+        printf("Created %s\n", outfilename);
     }
 
     free(videofile);
