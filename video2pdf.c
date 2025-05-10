@@ -643,7 +643,7 @@ int main(int argc, char *argv[]) {
     int option_index = 0;
     bool outputparam = false;
 
-    videofile = malloc(MAX_PATH);
+    videofile = malloc(MAX_PATH_LEN);
     videofile[0] = '\0';
 
     while ((opt = getopt_long(argc, argv, "i:o:m:u:t:h", long_options, &option_index)) != -1) {
