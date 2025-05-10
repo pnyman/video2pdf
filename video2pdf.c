@@ -41,6 +41,8 @@ typedef unsigned char BYTE_ARRAY[];
 
 int margins = 0;
 int top_margin = 0;
+int top_crop = 0;
+int bottom_crop = 0;
 int start_y_pos = 455; // magic number
 
 static struct option long_options[] = {
@@ -53,10 +55,9 @@ static struct option long_options[] = {
     {0, 0, 0, 0}
 };
 
-
-
 // * Forward declarations
 
+int get_video_dimensions(const char *filename, int *width, int *height);
 bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height);
 unsigned char* read_file(const char* filename, size_t* filesize);
 void take_screenshot(int seconds);
@@ -69,6 +70,36 @@ void download_video(const char *url);
 void prompt_help(void);
 void prompt_for_input(void);
 void help(void);
+
+// * get_video_dimensions
+
+int get_video_dimensions(const char *filename, int *width, int *height) {
+    char command[512];
+    snprintf(command, sizeof(command),
+             "ffprobe -v error -select_streams v:0 -show_entries stream=width,height "
+             "-of csv=p=0:s=x \"%s\"", filename);
+
+    FILE *fp = popen(command, "r");
+    if (!fp) {
+        perror("popen failed");
+        return -1;
+    }
+
+    char buffer[64];
+    if (fgets(buffer, sizeof(buffer), fp) == NULL) {
+        fprintf(stderr, "ffprobe returned no output\n");
+        pclose(fp);
+        return -1;
+    }
+    pclose(fp);
+
+    if (sscanf(buffer, "%dx%d", width, height) != 2) {
+        fprintf(stderr, "Could not parse dimensions: %s\n", buffer);
+        return -1;
+    }
+
+    return 0;
+}
 
 // * get_jpeg_dim
 
@@ -128,11 +159,40 @@ unsigned char* read_file(const char* filename, size_t* filesize) {
 
 // * take_screenshot
 
+/* void take_screenshot(int seconds) { */
+/*     char command[512]; */
+/*     snprintf(command, sizeof(command), */
+/*              "ffmpeg -y -loglevel error -ss %d -i %s -frames:v 1 -q:v 1 %s", */
+/*              seconds, videofile, imgfile); */
+/*  */
+/*     int return_code = system(command); */
+/*  */
+/*     if (return_code != 0) { */
+/*         printf("Command execution failed or returned " */
+/*                "non-zero: %d", return_code); */
+/*     } */
+/* } */
+
+
 void take_screenshot(int seconds) {
     char command[512];
+    int video_width, video_height;
+
+    int get_dims = get_video_dimensions(videofile, &video_width, &video_height);
+    if (get_dims != 0) {
+        printf("get_video_dimensions() failed: %d\n", get_dims);
+        return;
+    }
+
     snprintf(command, sizeof(command),
-             "ffmpeg -y -loglevel error -ss %d -i %s -frames:v 1 -q:v 1 %s",
-             seconds, videofile, imgfile);
+             "ffmpeg -y -loglevel error -ss %d -i %s -frames:v 1 -q:v 1 -vf \"crop=%d:%d:%d:%d\" %s",
+             seconds,
+             videofile,
+             video_width,                            // width
+             video_height - top_crop - bottom_crop,  // height after cropping
+             0,                                      // x offset
+             top_crop,                               // y offset
+             imgfile);
 
     int return_code = system(command);
 
@@ -343,6 +403,8 @@ void prompt_help(void) {
     printf("  o <output file>\n");
     printf("  t <time stamps>\n");
     printf("  m <left/right margins> (optional)\n");
+    printf("  j <crop bottom> (optional)\n");
+    printf("  k <crop top> (optional)\n");
     printf("  u <top margin> (optional)\n");
     printf("  s show settings\n");
     printf("  c clear settings\n");
@@ -424,6 +486,16 @@ void prompt_for_input(void) {
             printf("Top margin set to: %d\n", top_margin);
             break;
 
+        case 'k':
+            top_crop = atoi(argument);
+            printf("Top crop set to: %d\n", top_crop);
+            break;
+
+        case 'j':
+            bottom_crop = atoi(argument);
+            printf("Bottom crop set to: %d\n", bottom_crop);
+            break;
+
         case 't': {
             if (strlen(argument) == 0) {
                 printf("No time stamps given.\n");
@@ -475,6 +547,8 @@ void prompt_for_input(void) {
             printf("  Output file: %s\n", outfilename[0] != '\0' ? outfilename : "Not set.");
             printf("  Margins: %d\n", margins);
             printf("  Top margin: %d\n", top_margin);
+            printf("  Bottom crop: %d\n", bottom_crop);
+            printf("  Top crop: %d\n", top_crop);
             printf("  Time stamps: ");
             if (timestamp_count > 0) {
                 for (int i = 0; i < timestamp_count; i++) {
