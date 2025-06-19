@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include "lib/pdfgen.h"
 
-// * Globals
+/// Globals
 
 #define MAX_TIMESTAMPS 100 // adjust if needed
 
@@ -55,7 +55,7 @@ static struct option long_options[] = {
     {0, 0, 0, 0}
 };
 
-// * Forward declarations
+/// Forward declarations
 
 int get_video_dimensions(const char *filename, int *width, int *height);
 bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height);
@@ -71,7 +71,7 @@ void prompt_help(void);
 void prompt_for_input(void);
 void help(void);
 
-// * get_video_dimensions
+/// get_video_dimensions
 
 int get_video_dimensions(const char *filename, int *width, int *height) {
     char command[512];
@@ -101,7 +101,7 @@ int get_video_dimensions(const char *filename, int *width, int *height) {
     return 0;
 }
 
-// * get_jpeg_dim
+/// get_jpeg_dim
 
 bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height) {
 	*width = *height = -1;
@@ -131,7 +131,7 @@ bool get_jpeg_dim(BYTE_ARRAY data, size_t data_size, int *width, int *height) {
 	return false;
 }
 
-// * read_file
+/// read_file
 
 unsigned char* read_file(const char* filename, size_t* filesize) {
 	FILE* f = fopen(filename, "rb");
@@ -157,22 +157,7 @@ unsigned char* read_file(const char* filename, size_t* filesize) {
 	return buffer;
 }
 
-// * take_screenshot
-
-/* void take_screenshot(int seconds) { */
-/*     char command[512]; */
-/*     snprintf(command, sizeof(command), */
-/*              "ffmpeg -y -loglevel error -ss %d -i %s -frames:v 1 -q:v 1 %s", */
-/*              seconds, videofile, imgfile); */
-/*  */
-/*     int return_code = system(command); */
-/*  */
-/*     if (return_code != 0) { */
-/*         printf("Command execution failed or returned " */
-/*                "non-zero: %d", return_code); */
-/*     } */
-/* } */
-
+/// take_screenshot
 
 void take_screenshot(int seconds) {
     char command[512];
@@ -202,7 +187,7 @@ void take_screenshot(int seconds) {
     }
 }
 
-// * parse_timestamp
+/// parse_timestamp
 
 int parse_timestamp(const char *str) {
     int minutes, seconds;
@@ -213,7 +198,7 @@ int parse_timestamp(const char *str) {
     return minutes * 60 + seconds;
 }
 
-// * set_output_path
+/// set_output_path
 
 void set_output_path(const char *videopath, const char *outfilename) {
     const char *last_sep = strrchr(videopath, '/');
@@ -256,30 +241,7 @@ void set_output_path(const char *videopath, const char *outfilename) {
     strncat(outputfile, outfilename, MAX_PATH_LEN - dirlen - 1);
 }
 
-/* void set_output_path(const char *videopath, const char *outfilename) { */
-/*     const char *last_sep = strrchr(videopath, '/'); */
-/*     if (!last_sep) { */
-/*         last_sep = strrchr(videopath, '\\');  // support Windows paths too */
-/*     } */
-/*  */
-/*     if (!last_sep) { */
-/*         fprintf(stderr, "Kunde inte hitta sökvägsseparator i videofil: %s\n", videopath); */
-/*         exit(EXIT_FAILURE); */
-/*     } */
-/*  */
-/*     size_t dirlen = last_sep - videopath + 1; */
-/*     if (dirlen >= MAX_PATH_LEN) { */
-/*         fprintf(stderr, "Sökvägen är för lång\n"); */
-/*         exit(EXIT_FAILURE); */
-/*     } */
-/*  */
-/*     strncpy(outputfile, videopath, dirlen); */
-/*     outputfile[dirlen] = '\0'; */
-/*  */
-/*     strncat(outputfile, outfilename, MAX_PATH_LEN - dirlen - 1); */
-/* } */
-
-// * create_pdf
+/// create_pdf
 
 int create_pdf() {
     struct pdf_info info = {
@@ -327,7 +289,12 @@ int create_pdf() {
             this_y_pos -= scaled_height;
         }
 
-        pdf_add_image_file(pdf, NULL, margins, this_y_pos + margins, display_width, -1, imgfile);
+        pdf_add_image_file(pdf, NULL,
+                           margins,
+                           this_y_pos + margins + bottom_crop,
+                           display_width,
+                           -1,
+                           imgfile);
         remove(imgfile);
 
         sprintf(page_str, "%d", pagenr);
@@ -342,7 +309,7 @@ int create_pdf() {
     return 0;
 }
 
-// * format_timestamp()
+/// format_timestamp()
 
 char *format_timestamp(int seconds) {
     int minutes = seconds / 60;
@@ -360,7 +327,7 @@ char *format_timestamp(int seconds) {
     return buffer;
 }
 
-// * open_outputfile()
+/// open_outputfile()
 
 void open_outputfile(void) {
     if (outputfile[0] == '\0') {
@@ -384,7 +351,7 @@ void open_outputfile(void) {
     }
 }
 
-// * download_video()
+/// download_video()
 
 void download_video(const char *url) {
     char command[512];
@@ -395,7 +362,7 @@ void download_video(const char *url) {
     system(command);
 }
 
-// * prompt_help()
+/// prompt_help()
 
 void prompt_help(void) {
     printf("Available commands:\n");
@@ -415,7 +382,7 @@ void prompt_help(void) {
     printf("  q quit\n");
 }
 
-// * prompt_for_input
+/// prompt_for_input
 
 void prompt_for_input(void) {
     char input[1024];
@@ -459,16 +426,10 @@ void prompt_for_input(void) {
             break;
 
         case 'i':
-            /* strncpy(videofile, argument, MAX_PATH_LEN - 1); */
-            /* videofile[MAX_PATH_LEN - 1] = '\0'; */
             snprintf(videofile, MAX_PATH_LEN, "%s.mp4", argument);
             printf("Input file set to: %s\n", videofile);
-
-            /* strncpy(outfilename, argument, MAX_PATH_LEN - 1); */
-            /* outfilename[MAX_PATH_LEN - 1] = '\0'; */
             snprintf(outfilename, MAX_PATH_LEN, "%s.pdf", argument);
             printf("Output file set to: %s\n", outfilename);
-
             break;
 
         case 'o':
@@ -591,7 +552,7 @@ void prompt_for_input(void) {
     }
 }
 
-// * file_exists()
+/// file_exists()
 
 bool file_exists(const char *filename) {
     FILE *file = fopen(filename, "r");
@@ -602,7 +563,7 @@ bool file_exists(const char *filename) {
     return false;      // Filen existerar inte
 }
 
-// * help()
+/// help()
 
 void help(void) {
     printf("Options:\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n  %s\n\n",
@@ -628,7 +589,7 @@ void help(void) {
     /* printf("\n"); */
 }
 
-// * main
+/// main
 
 int main(int argc, char *argv[]) {
 
@@ -678,7 +639,6 @@ int main(int argc, char *argv[]) {
             snprintf(videofile, MAX_PATH_LEN, "%s.mp4", optarg);
             snprintf(outfilename, MAX_PATH_LEN, "%s.pdf", optarg);
             outputparam = true;
-            /* videofile = optarg; */
             break;
 
         case 'o':
